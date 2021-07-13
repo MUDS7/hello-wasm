@@ -1,9 +1,11 @@
 #![feature(in_band_lifetimes)]
 #![feature(trusted_random_access)]
+#![feature(update_panic_count)]
 
 mod shapes;
 mod names;
 mod parse_rvm;
+mod parse_binary;
 
 use nom::sequence::tuple;
 use nom::character::complete::{alpha1, multispace0};
@@ -21,7 +23,7 @@ use slab_tree::*;
 use std::borrow::{ Borrow};
 
 fn main() {
-    let file=&String::from_utf8_lossy(include_bytes!("PIPE-100-b-1.txt")).to_string() as &str ;
+    let file=&String::from_utf8_lossy(include_bytes!("D:/test.rvm")).to_string() as &str ;
     let (input,HEAD)=parse_head(file).unwrap();
     println!("head={:?}",HEAD);
     let (input,MODL)=parse_modl(input).unwrap();
@@ -84,6 +86,7 @@ pub fn parse_kinds<'a>(input:&'a str, mut root:NodeMut<Group>, sum:u8) ->IResult
         multispace0,
         alpha1,
     ))(input)?;
+    println!("value={}",value);
     match value{
         "CNTB"=>{
             let (input,(sum,val))=parse_cntb( input,sum).unwrap();

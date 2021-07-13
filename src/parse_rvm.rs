@@ -1,7 +1,7 @@
 use nom::{IResult, Err};
 use nom::sequence::tuple;
 use nom::character::complete::multispace0;
-use nom::number::complete::float;
+use nom::number::complete::{float, double};
 use crate::names::{CNTB, Group, PRIM, HEAD, CNTE};
 use nom::bytes::complete::{take_until, tag};
 use nom::error::ParseError;
@@ -9,11 +9,12 @@ use nom::multi::separated_list0;
 use std::mem::transmute;
 use nom::combinator::opt;
 use nom::branch::alt;
-use crate::shapes::{tuple_pyramid, tuple_Cylinder, tuple_box, tuple_rectangularTorus, tuple_CircularTorus, tuple_EllipticalDish, tuple_SphericalDish, SphericalDish, PrimShapes, tuple_Snout, tuple_Sphere, tuple_Line};
+use crate::shapes::{tuple_pyramid, tuple_Cylinder, tuple_box, tuple_rectangularTorus, tuple_CircularTorus, tuple_EllipticalDish, tuple_SphericalDish, SphericalDish, PrimShapes, tuple_Snout, tuple_Sphere, tuple_Line, tuple_FacetGroup, FacetGroup};
 use crate::shapes::PrimShapes::*;
 use slab::Slab;
 use slab_tree::NodeMut;
 use std::borrow::Borrow;
+use nom::number::streaming::f64;
 
 
 pub fn parse_version(input:&str)->IResult<&str,Vec<f32>>{
@@ -163,6 +164,17 @@ pub fn parse_prim(input: &str) ->IResult<&str, PRIM> {
             };
             Ok((input,data))
         }
+        11.0=>{
+            let arr=vec![];
+            let (input,arr)=tuple_FacetGroup(input,arr).unwrap();
+            let data=PRIM{
+                kind: "FacetGroup".to_string(),
+                M_3x4: M3x4,
+                bboxLocal,
+                group: FacetGroupShape(arr)
+            };
+            Ok((input,data))
+        }
         _ => Err(panic!("Problem opening the file")),
     }
 
@@ -266,4 +278,16 @@ pub fn parse_separated(input:&str)->IResult<&str,Vec<f32>>{
     )(input)?;
 
     Ok((input,out))
+}
+fn tuple_f64(input:&str)->IResult<&str,f64>{
+    let (input,(x,))=tuple((
+        double,
+        ))(input)?;
+    Ok((input,x))
+}
+#[test]
+fn test_tuple_f64(){
+    let data="0.111111111";
+    let (input,out)=tuple_f64(data).unwrap();
+    println!("out={}",out);
 }
