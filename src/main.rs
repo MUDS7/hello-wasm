@@ -23,7 +23,7 @@ use slab_tree::*;
 use std::borrow::{ Borrow};
 
 fn main() {
-    let file=&String::from_utf8_lossy(include_bytes!("D:/test.rvm")).to_string() as &str ;
+    let file=&String::from_utf8_lossy(include_bytes!("PIPE-100-B-1.rvm")).to_string() as &str ;
     let (input,HEAD)=parse_head(file).unwrap();
     println!("head={:?}",HEAD);
     let (input,MODL)=parse_modl(input).unwrap();
