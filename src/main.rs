@@ -15,15 +15,18 @@ use crate::names::{HEAD, MODL, CNTB, Group};
 use crate::parse_rvm::{parse_version, parse_translation, parse_cntb, parse_prim, parse_cnte};
 use std::mem::take;
 use nom::number::complete::float;
-use nom::lib::std::iter::TrustedRandomAccess;
+//use nom::lib::std::iter::TrustedRandomAccess;
 use std::fs::File;
 use std::io::{Write, Read};
 use slab::Slab;
 use slab_tree::*;
 use std::borrow::{ Borrow};
+use wasm_bindgen::JsValue;
+use crate::shapes::{parse_head, parse_modl, parse_kinds};
+use std::io;
 
 fn main() {
-    let file=&String::from_utf8_lossy(include_bytes!("PIPE-100-B-1.rvm")).to_string() as &str ;
+    let file=&String::from_utf8_lossy(include_bytes!("D:/RustProject/PIPE-100-b-1/rvm_txt.txt")).to_string() as &str ;
     let (input,HEAD)=parse_head(file).unwrap();
     println!("head={:?}",HEAD);
     let (input,MODL)=parse_modl(input).unwrap();
@@ -40,80 +43,8 @@ fn main() {
     tree.write_formatted(&mut s).unwrap();
     println!("s={}",s);
 }
-pub fn parse_head(input:&str)->IResult<&str,HEAD>{
-    let (input,(_,info,_,_,note,_,data,_,user,_,encoding))=tuple((
-        take_until("H"),
-        alpha1,
-        parse_version,
-        multispace0,
-        take_until("\n"),
-        multispace0,
-        take_until("\n"),
-        multispace0,
-        take_until("\n"),
-        multispace0,
-        take_until("\n"),
-        ))(input)?;
-    Ok((input,HEAD{
-        info: info.to_string(),
-        note: note.to_string(),
-        data: data.to_string(),
-        user: user.to_string(),
-        encoding:encoding.to_string()
-    }))
-}
 
-pub fn parse_modl(input:&str)->IResult<&str,MODL>{
-    let (input,(_,_,_,_,project,_,name))=tuple((//(_,_,_,project,_,name)
-        multispace0,
-        alpha1,
-        parse_version,
-        multispace0,
-        take_until("\n"),
-        multispace0,
-        take_until("\n"),
-        ))(input)?;
 
-    Ok((input,MODL{
-        project: project.to_string(),
-           name: name.to_string()
-    }))
-}
-
-pub fn parse_kinds<'a>(input:&'a str, mut root:NodeMut<Group>, sum:u8) ->IResult<&'a str,u8>{
-
-    let (input,(_,value))=tuple((
-        multispace0,
-        alpha1,
-    ))(input)?;
-    println!("value={}",value);
-    match value{
-        "CNTB"=>{
-            let (input,(sum,val))=parse_cntb( input,sum).unwrap();
-            let root=root.append(Group::CNTB(val));
-            let (input,sum)=parse_kinds(input,root,sum).unwrap();
-            return Ok((input,sum));
-        }
-        "PRIM"=>{
-            let (input, val)=parse_prim(input).unwrap();
-            root.append(Group::PRIM(val));
-            let (input,sum)=parse_kinds(input,root,sum).unwrap();
-            return Ok((input,sum))
-        }
-        "CNTE"=>{
-            let (input,(sum,val))=parse_cnte(input,  sum).unwrap();
-            root.append(Group::CNTE(val));
-            let (input,sum)=parse_kinds(input,root.parent().unwrap(),sum).unwrap();
-            return Ok((input,sum))
-        }
-        "END"=>{
-            println!("parse successful");
-            return Ok((input,sum))
-        }
-        _ => Ok((input,sum))
-    }
-
-}
 #[test]
 fn test_parse_head(){
     let head="HEAD

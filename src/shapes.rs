@@ -1,13 +1,89 @@
-use crate::names::CNTB;
-use nom::character::complete::multispace0;
+use crate::names::{CNTB, HEAD, MODL, Group};
+use nom::character::complete::{multispace0, alpha1};
 use nom::number::complete::float;
 use nom::IResult;
 use nom::sequence::tuple;
 use serde::{Serialize,Deserialize};
-use crate::parse_rvm::parse_bboxLocal;
+use crate::parse_rvm::{parse_bboxLocal, parse_version, parse_cntb, parse_prim, parse_cnte};
 use std::borrow::Borrow;
 use std::rc::Rc;
 use nom::bytes::complete::take_until;
+use slab_tree::NodeMut;
+
+pub fn parse_head(input:&str)->IResult<&str,HEAD>{
+    let (input,(_,info,_,_,note,_,data,_,user,_,encoding))=tuple((
+        take_until("H"),
+        alpha1,
+        parse_version,
+        multispace0,
+        take_until("\n"),
+        multispace0,
+        take_until("\n"),
+        multispace0,
+        take_until("\n"),
+        multispace0,
+        take_until("\n"),
+    ))(input)?;
+    Ok((input,HEAD{
+        info: info.to_string(),
+        note: note.to_string(),
+        data: data.to_string(),
+        user: user.to_string(),
+        encoding:encoding.to_string()
+    }))
+}
+
+pub fn parse_modl(input:&str)->IResult<&str,MODL>{
+    let (input,(_,_,_,_,project,_,name))=tuple((//(_,_,_,project,_,name)
+                                                multispace0,
+                                                alpha1,
+                                                parse_version,
+                                                multispace0,
+                                                take_until("\n"),
+                                                multispace0,
+                                                take_until("\n"),
+    ))(input)?;
+
+    Ok((input,MODL{
+        project: project.to_string(),
+        name: name.to_string()
+    }))
+}
+
+pub fn parse_kinds<'a>(input:&'a str, mut root:NodeMut<Group>, sum:u8) ->IResult<&'a str,u8>{
+
+    let (input,(_,value))=tuple((
+        multispace0,
+        alpha1,
+    ))(input)?;
+    //println!("value={}",value);
+    match value{
+        "CNTB"=>{
+            let (input,(sum,val))=parse_cntb( input,sum).unwrap();
+            let root=root.append(Group::CNTB(val));
+            let (input,sum)=parse_kinds(input,root,sum).unwrap();
+            return Ok((input,sum));
+        }
+        "PRIM"=>{
+            let (input, val)=parse_prim(input).unwrap();
+            root.append(Group::PRIM(val));
+            let (input,sum)=parse_kinds(input,root,sum).unwrap();
+            return Ok((input,sum))
+        }
+        "CNTE"=>{
+            let (input,(sum,val))=parse_cnte(input,  sum).unwrap();
+            root.append(Group::CNTE(val));
+            let (input,sum)=parse_kinds(input,root.parent().unwrap(),sum).unwrap();
+            return Ok((input,sum))
+        }
+        "END"=>{
+            println!("parse successful");
+            return Ok((input,sum))
+        }
+        _ => Ok((input,sum))
+    }
+
+}
 
 #[derive(Debug,Serialize,Deserialize,PartialEq,Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
